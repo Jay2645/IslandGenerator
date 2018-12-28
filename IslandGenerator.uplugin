@@ -1,17 +1,17 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "1.0",
-	"FriendlyName": "Polygonal Map Generator",
+	"VersionName": "0.1",
+	"FriendlyName": "Island Generator",
 	"Description": "An Unreal Engine 4 implementation of the Polygonal Map Generator for generating islands found at http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/.",
 	"Category": "Rendering",
 	"CreatedBy": "Jay Stevens",
 	"CreatedByURL": "https://github.com/Jay2645",
-	"DocsURL": "https://github.com/Jay2645/Unreal-Polygonal-Map-Gen",
-	"MarketplaceURL": "https://github.com/Jay2645/Unreal-Polygonal-Map-Gen",
-	"SupportURL": "https://github.com/Jay2645/Unreal-Polygonal-Map-Gen",
+	"DocsURL": "https://github.com/Jay2645/IslandGenerator",
+	"MarketplaceURL": "https://github.com/Jay2645/IslandGenerator",
+	"SupportURL": "https://github.com/Jay2645/IslandGenerator",
 	"CanContainContent": true,
-	"IsBetaVersion": false,
+	"IsBetaVersion": true,
 	"Installed": false,
   "Modules": [
     {
@@ -26,6 +26,11 @@
     },
     {
       "Name": "PolygonalMapGenerator",
+      "Type": "Runtime",
+      "LoadingPhase": "PreDefault"
+    },
+    {
+      "Name": "IslandGenerator",
       "Type": "Runtime",
       "LoadingPhase": "PreDefault"
     }
