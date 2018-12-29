@@ -72,7 +72,7 @@ class ISLANDGENERATOR_API UProceduralNameGenerator : public UBlueprintFunctionLi
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "Procedural Generation|Markov Chain")
-	static FString GenerateRandomWord(TArray<FText> Words, FRandomStream RandomGenerator, uint8 WordOrder = 2, uint8 MinLength = 3, uint8 MaxLength = 16, bool bConvertToTitleCase = true, bool bMatchWordPattern = false);
+	static FString GenerateRandomWord(const TArray<FText>& Words, FRandomStream& RandomGenerator, uint8 WordOrder = 2, uint8 MinLength = 3, uint8 MaxLength = 16, bool bConvertToTitleCase = true, bool bMatchWordPattern = false);
 	UFUNCTION(BlueprintCallable, Category = "Procedural Generation|Markov Chain")
 	static FString UppercaseWords(FString value);
 

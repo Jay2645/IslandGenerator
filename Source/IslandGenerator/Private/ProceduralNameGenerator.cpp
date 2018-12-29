@@ -213,7 +213,7 @@ FMarkovCharacter* UProceduralNameGenerator::GetCharacterByProbability(FString ke
 	return result;
 }
 
-FString UProceduralNameGenerator::GenerateRandomWord(TArray<FText> Words, FRandomStream RandomGenerator, uint8 WordOrder, uint8 MinLength, uint8 MaxLength, bool bConvertToTitleCase, bool bMatchWordPattern)
+FString UProceduralNameGenerator::GenerateRandomWord(const TArray<FText>& Words, FRandomStream& RandomGenerator, uint8 WordOrder, uint8 MinLength, uint8 MaxLength, bool bConvertToTitleCase, bool bMatchWordPattern)
 {
 	TArray<FString> wordStrings;
 	wordStrings.SetNumZeroed(Words.Num());
@@ -231,12 +231,10 @@ FString UProceduralNameGenerator::GenerateRandomWord(TArray<FText> Words, FRando
 		}
 		if (!bMatchWordPattern)
 		{
-			UE_LOG(LogWorldGen, Log, TEXT("Generated word: %s"), *word);
 			return word;
 		}
 		if (WordPatterns.Contains(GetWordPattern(word)))
 		{
-			UE_LOG(LogWorldGen, Log, TEXT("Generated word: %s"), *word);
 			return word;
 		}
 	}

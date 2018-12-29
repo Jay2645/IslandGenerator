@@ -1,7 +1,7 @@
 {
 	"FileVersion": 3,
 	"Version": 1,
-	"VersionName": "0.1",
+	"VersionName": "0.2.0",
 	"FriendlyName": "Island Generator",
 	"Description": "An Unreal Engine 4 implementation of the Polygonal Map Generator for generating islands found at http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/.",
 	"Category": "Rendering",
