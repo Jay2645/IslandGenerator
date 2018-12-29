@@ -19,7 +19,6 @@
 #include "IslandMap.h"
 #include "DualMeshBuilder.h"
 #include "IslandMapUtils.h"
-#include "DrawDebugHelpers.h"
 
 // Sets default values
 AIslandMap::AIslandMap()
@@ -27,6 +26,8 @@ AIslandMap::AIslandMap()
 	PrimaryActorTick.bCanEverTick = false;
 	Seed = 0;
 	NumRivers = 30;
+
+	OnIslandGenerationComplete.AddDynamic(this, &AIslandMap::OnIslandGenComplete);
 }
 
 // Called when the game starts or when spawned
@@ -45,6 +46,11 @@ void AIslandMap::GenerateIsland_Implementation()
 		return;
 	}
 
+#if !UE_BUILD_SHIPPING
+	FDateTime startTime = FDateTime::UtcNow();
+	FDateTime generationStartTime = startTime;
+#endif
+
 	Rng = FRandomStream();
 	Rng.Initialize(Seed);
 	RiverRng = FRandomStream();
@@ -59,8 +65,22 @@ void AIslandMap::GenerateIsland_Implementation()
 		Shape.Amplitudes[i] = FMath::Pow(Persistence, i);
 	}
 
+#if !UE_BUILD_SHIPPING
+	FDateTime finishedTime = FDateTime::UtcNow();
+	FTimespan difference = finishedTime - startTime;
+	startTime = finishedTime;
+	UE_LOG(LogMapGen, Log, TEXT("Initialization took %f seconds."), difference.GetTotalSeconds());
+#endif
+
 	// Generate map points
-	Mesh = PointGenerator->GenerateDualMesh(Rng);
+	Mesh = PointGenerator->GenerateDualMesh(Rng); 
+	
+#if !UE_BUILD_SHIPPING
+	finishedTime = FDateTime::UtcNow();
+	difference = finishedTime - startTime;
+	startTime = finishedTime;
+	UE_LOG(LogMapGen, Log, TEXT("Generating points took %f seconds."), difference.GetTotalSeconds());
+#endif
 
 	// Reset all arrays
 
@@ -93,83 +113,306 @@ void AIslandMap::GenerateIsland_Implementation()
 	r_biome.Empty(Mesh->NumRegions);
 	r_biome.SetNumZeroed(Mesh->NumRegions);
 
+#if !UE_BUILD_SHIPPING
+	finishedTime = FDateTime::UtcNow();
+	difference = finishedTime - startTime;
+	startTime = finishedTime;
+	UE_LOG(LogMapGen, Log, TEXT("Resetting arrays took %f seconds."), difference.GetTotalSeconds());
+#endif
+
 	// Water
 	Water->assign_r_water(r_water, Rng, Mesh, Shape);
 	Water->assign_r_ocean(r_ocean, Mesh, r_water);
 
-	UE_LOG(LogMapGen, Log, TEXT("Generated map water."));
+#if !UE_BUILD_SHIPPING
+	finishedTime = FDateTime::UtcNow();
+	difference = finishedTime - startTime;
+	startTime = finishedTime;
+	UE_LOG(LogMapGen, Log, TEXT("Generated map water in %f seconds."), difference.GetTotalSeconds());
+#endif
 
 	// Elevation
 	Elevation->assign_t_elevation(t_elevation, t_coastdistance, t_downslope_s, Mesh, r_ocean, r_water, DrainageRng);
 	Elevation->redistribute_t_elevation(t_elevation, Mesh, r_ocean);
 	Elevation->assign_r_elevation(r_elevation, Mesh, t_elevation, r_ocean);
 
-	UE_LOG(LogMapGen, Log, TEXT("Generated map elevation."));
+#if !UE_BUILD_SHIPPING
+	finishedTime = FDateTime::UtcNow();
+	difference = finishedTime - startTime;
+	startTime = finishedTime;
+	UE_LOG(LogMapGen, Log, TEXT("Generated map elevation in %f seconds."), difference.GetTotalSeconds());
+#endif
 
 	// Rivers
 	spring_t = Rivers->find_spring_t(Mesh, r_water, t_elevation, t_downslope_s);
-	UE_LOG(LogMapGen, Log, TEXT("Created %d springs."), spring_t.Num());
 	UIslandMapUtils::RandomShuffle(spring_t, RiverRng);
 	river_t.SetNum(NumRivers < spring_t.Num() ? NumRivers : spring_t.Num());
 	for (int i = 0; i < river_t.Num(); i++)
 	{
 		river_t[i] = spring_t[i];
 	}
-	UE_LOG(LogMapGen, Log, TEXT("Created %d rivers."), river_t.Num());
 	Rivers->assign_s_flow(s_flow, Mesh, t_downslope_s, river_t);
 
-	UE_LOG(LogMapGen, Log, TEXT("Generated map rivers."));
+#if !UE_BUILD_SHIPPING
+	finishedTime = FDateTime::UtcNow();
+	difference = finishedTime - startTime;
+	startTime = finishedTime;
+	UE_LOG(LogMapGen, Log, TEXT("Generated %d map rivers in %f seconds."), river_t.Num(), difference.GetTotalSeconds());
+#endif
 
 	// Moisture
 	Moisture->assign_r_moisture(r_moisture, r_waterdistance, Mesh, r_water, Moisture->find_moisture_seeds_r(Mesh, s_flow, r_ocean, r_water));
 	Moisture->redistribute_r_moisture(r_moisture, Mesh, r_water, BiomeBias.Rainfall, 1.0f + BiomeBias.Rainfall);
 
-	UE_LOG(LogMapGen, Log, TEXT("Generated map moisture."));
+#if !UE_BUILD_SHIPPING
+	finishedTime = FDateTime::UtcNow();
+	difference = finishedTime - startTime;
+	startTime = finishedTime;
+	UE_LOG(LogMapGen, Log, TEXT("Generated map moisture in %f seconds."), difference.GetTotalSeconds());
+#endif
 
 	// Biomes
 	Biomes->assign_r_coast(r_coast, Mesh, r_ocean);
 	Biomes->assign_r_temperature(r_temperature, Mesh, r_ocean, r_water, r_elevation, r_moisture, BiomeBias.NorthernTemperature, BiomeBias.SouthernTemperature);
 	Biomes->assign_r_biome(r_biome, Mesh, r_ocean, r_water, r_coast, r_temperature, r_moisture);
 
-	UE_LOG(LogMapGen, Log, TEXT("Generated map biomes."));
+#if !UE_BUILD_SHIPPING
+	finishedTime = FDateTime::UtcNow();
+	difference = finishedTime - startTime;
+	startTime = finishedTime;
+	UE_LOG(LogMapGen, Log, TEXT("Generated map biomes in %f seconds."), difference.GetTotalSeconds());
+#endif
+
+	Polygons.Empty(Mesh->NumSolidRegions);
+	Polygons.SetNumZeroed(Mesh->NumSolidRegions);
+	for (FPointIndex r = 0; r < Mesh->NumSolidRegions; r++)
+	{
+		Polygons[r].Biome = r_biome[r];
+		Polygons[r].Vertices = Mesh->r_circulate_t(r);
+		for (FTriangleIndex t : Polygons[r].Vertices)
+		{
+			if (!t.IsValid())
+			{
+				continue;
+			}
+			FVector2D point2D = Mesh->t_pos(t);
+			float z = t_elevation.IsValidIndex(t) ? t_elevation[t] : -1000.0f;
+			Polygons[r].VertexPoints.Add(FVector(point2D.X, point2D.Y, z * 10000));
+		}
+	}
+
+#if !UE_BUILD_SHIPPING
+	finishedTime = FDateTime::UtcNow();
+	difference = finishedTime - startTime;
+	FTimespan completedTime = finishedTime - generationStartTime;
+	UE_LOG(LogMapGen, Log, TEXT("Generated polygons in %f seconds. Total map generation time: %f seconds."), difference.GetTotalSeconds(), completedTime.GetTotalSeconds());
+#endif
 
 	// Do whatever we need to do when the island generation is done
-	OnIslandGenComplete();
+	OnIslandGenerationComplete.Broadcast();
 }
 
 void AIslandMap::OnIslandGenComplete_Implementation()
 {
-	Draw();
+	// Do nothing by default
 }
 
-void AIslandMap::Draw() const
+TArray<bool>& AIslandMap::GetWaterRegions()
 {
-	UWorld* world = GetWorld();
-	const TArray<FSideIndex>& _halfedges = Mesh->GetHalfEdges();
-	const FDualMesh& mesh = Mesh->GetRawMesh();
-	const TArray<FVector2D>& _r_vertex = Mesh->GetPoints();
+	return r_water;
+}
 
-	for (FSideIndex e = 0; e < _halfedges.Num(); e++)
+bool AIslandMap::IsPointWater(FPointIndex Region) const
+{
+	if (r_water.IsValidIndex(Region))
 	{
-		if (e < _halfedges[e])
-		{
-			FPointIndex first = UDelaunayHelper::GetPointIndexFromHalfEdge(mesh, e);
-			FPointIndex second = UDelaunayHelper::GetPointIndexFromHalfEdge(mesh, UDelaunayHelper::NextHalfEdge(e));
-
-			if (Mesh->r_ghost(first) || Mesh->r_ghost(second))
-			{
-				continue;
-			}
-
-			const FVector2D p = _r_vertex[first];
-			const FVector2D q = _r_vertex[second];
-			float pZCoord = r_elevation.IsValidIndex(first) ? r_elevation[first] : -1000.0f;
-			float qZCoord = r_elevation.IsValidIndex(second) ? r_elevation[second] : -1000.0f;
-			FVector pVector = FVector(p.X, p.Y, pZCoord * 10000);
-			FVector qVector = FVector(q.X, q.Y, qZCoord * 10000);
-
-			FLinearColor color = FMath::Lerp(r_biome[first].DebugColor.ReinterpretAsLinear(), r_biome[second].DebugColor.ReinterpretAsLinear(), 0.5f);
-			DrawDebugLine(world, pVector, qVector, color.ToFColor(false), false, 999.0f);
-		}
+		return r_water[Region];
 	}
+	else
+	{
+		return false;
+	}
+}
+
+TArray<bool>& AIslandMap::GetOceanRegions()
+{
+	return r_ocean;
+}
+
+bool AIslandMap::IsPointOcean(FPointIndex Region) const
+{
+	if (r_ocean.IsValidIndex(Region))
+	{
+		return r_ocean[Region];
+	}
+	else
+	{
+		return false;
+	}
+}
+
+TArray<bool>& AIslandMap::GetCoastalRegions()
+{
+	return r_coast;
+}
+
+bool AIslandMap::IsPointCoast(FPointIndex Region) const
+{
+	if (r_coast.IsValidIndex(Region))
+	{
+		return r_coast[Region];
+	}
+	else
+	{
+		return false;
+	}
+}
+
+TArray<float>& AIslandMap::GetRegionElevations()
+{
+	return r_elevation;
+}
+
+float AIslandMap::GetPointElevation(FPointIndex Region) const
+{
+	if (r_elevation.IsValidIndex(Region))
+	{
+		return r_elevation[Region];
+	}
+	else
+	{
+		return -1.0f;
+	}
+}
+
+TArray<int32>& AIslandMap::GetRegionWaterDistance()
+{
+	return r_waterdistance;
+}
+
+int32 AIslandMap::GetPointWaterDistance(FPointIndex Region) const
+{
+	if (r_waterdistance.IsValidIndex(Region))
+	{
+		return r_waterdistance[Region];
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+TArray<float>& AIslandMap::GetRegionMoisture()
+{
+	return r_moisture;
+}
+
+float AIslandMap::GetPointMoisture(FPointIndex Region) const
+{
+	if (r_moisture.IsValidIndex(Region))
+	{
+		return r_moisture[Region];
+	}
+	else
+	{
+		return -1.0f;
+	}
+}
+
+TArray<float>& AIslandMap::GetRegionTemperature()
+{
+	return r_temperature;
+}
+
+float AIslandMap::GetPointTemperature(FPointIndex Region) const
+{
+	if (r_temperature.IsValidIndex(Region))
+	{
+		return r_temperature[Region];
+	}
+	else
+	{
+		return -1.0f;
+	}
+}
+
+TArray<FBiomeData>& AIslandMap::GetRegionBiomes()
+{
+	return r_biome;
+}
+
+FBiomeData AIslandMap::GetPointBiome(FPointIndex Region) const
+{
+	if (r_biome.IsValidIndex(Region))
+	{
+		return r_biome[Region];
+	}
+	else
+	{
+		return FBiomeData();
+	}
+}
+
+TArray<int32>& AIslandMap::GetTriangleCoastDistances()
+{
+	return t_coastdistance;
+}
+
+int32 AIslandMap::GetTriangleCoastDistance(FTriangleIndex Triangle) const
+{
+	if (t_coastdistance.IsValidIndex(Triangle))
+	{
+		return t_coastdistance[Triangle];
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+TArray<float>& AIslandMap::GetTriangleElevations()
+{
+	return t_elevation;
+}
+
+float AIslandMap::GetTriangleElevation(FTriangleIndex Triangle) const
+{
+	if (t_elevation.IsValidIndex(Triangle))
+	{
+		return t_elevation[Triangle];
+	}
+	else
+	{
+		return -1.0f;
+	}
+}
+
+TArray<FSideIndex>& AIslandMap::GetTriangleDownslopes()
+{
+	return t_downslope_s;
+}
+
+TArray<int32>& AIslandMap::GetSideFlow()
+{
+	return s_flow;
+}
+
+TArray<FTriangleIndex>& AIslandMap::GetSpringTriangles()
+{
+	return spring_t;
+}
+
+bool AIslandMap::IsTriangleSpring(FTriangleIndex Triangle) const
+{
+	return spring_t.Contains(Triangle);
+}
+
+TArray<FTriangleIndex>& AIslandMap::GetRiverTriangles()
+{
+	return river_t;
+}
+
+bool AIslandMap::IsTriangleRiver(FTriangleIndex Triangle) const
+{
+	return river_t.Contains(Triangle);
 }
