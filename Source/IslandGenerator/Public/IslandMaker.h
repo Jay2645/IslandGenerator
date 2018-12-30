@@ -7,7 +7,11 @@
 
 #include "DelaunayHelper.h"
 
-#include "IslandMap.h"
+#include "IslandMapMesh.h"
+
+#include "Rivers/NamedIslandRivers.h"
+#include "RiverSplineComponent.h"
+
 #include "IslandMaker.generated.h"
 
 USTRUCT(BlueprintType)
@@ -70,14 +74,37 @@ public:
  * 
  */
 UCLASS()
-class ISLANDGENERATOR_API AIslandMaker : public AIslandMap
+class ISLANDGENERATOR_API AIslandMaker : public AIslandMapMesh
 {
 	GENERATED_BODY()
 
 protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TArray<FIslandRegion> Regions;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	TArray<FIslandTriangle> Triangles;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "River")
+	TArray<URiverSplineComponent*> RiverSplines;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "River")
+	float RiverErosionFactor;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "River")
+	UMaterialInterface* RiverInterface;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "River")
+	TMap<FName, UTexture*> RiverTextures;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "River")
+	float PointScale;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "River")
+	UStaticMesh* RiverMesh;
+
+public:
+	AIslandMaker();
+
 protected:
+	virtual void OnRiverGenerationComplete_Implementation() override;
+	virtual URiverSplineComponent* CreateRiverSpine(UNamedRiver* River, TArray<FVector> SplinePositions);
+	virtual TArray<FVector> ProcessRiver(UNamedRiver* River, int32 MaxFlow);
 	virtual void OnIslandGenComplete_Implementation() override;
 };

@@ -17,6 +17,9 @@ class ISLANDGENERATOR_API UNamedRiver : public URiver
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FString RiverName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<int32> RiverFlow;
 };
 
 /**
