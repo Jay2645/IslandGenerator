@@ -5,7 +5,7 @@
 This is a port of [the JavaScript code](https://github.com/amitp/mapgen2) of [Red Blob Games' *Polygonal Map Generation for Games*](http://www-cs-students.stanford.edu/~amitp/game-programming/polygon-map-generation/). This port is written in C++ and designed to work in Unreal Engine 4 using the Unreal Engine 4 "Plugin" system. This port works fully with games written in C++ as well as games that use Unreal Engine 4's "Blueprint" system.
 
 This version is the downstream port with some extra features. If you want the original without much in the way of extra fluff, [see the upstream fork.](https://github.com/Jay2645/Unreal-Polygonal-Map-Gen)
-=======
+
 ![highresscreenshot00000](https://user-images.githubusercontent.com/2058763/50556433-f0b7a500-0c8d-11e9-8636-21dc94e46699.png)
 
 ![highresscreenshot00001](https://user-images.githubusercontent.com/2058763/50556434-f0b7a500-0c8d-11e9-94c9-2e4dbf61520b.png)
