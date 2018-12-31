@@ -4,7 +4,7 @@
 
 AIslandMaker::AIslandMaker()
 {
-	RiverErosionFactor = 0.8f;
+	RiverErosionFactor = 0.1f;
 }
 
 void AIslandMaker::OnRiverGenerationComplete_Implementation()
@@ -37,7 +37,7 @@ URiverSplineComponent* AIslandMaker::CreateRiverSpine(UNamedRiver* River, TArray
 	riverSpline->RegisterComponent();
 	riverSpline->SetMobility(EComponentMobility::Movable);
 	riverSpline->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
-	riverSpline->SetSplineWorldPoints(SplinePositions);
+	riverSpline->SetSplineLocalPoints(SplinePositions);
 
 	riverSpline->PointScale = PointScale;
 	riverSpline->RiverMesh = RiverMesh;
