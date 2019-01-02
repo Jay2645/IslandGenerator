@@ -1,44 +1,51 @@
 // Copyright 2018 Jay Stevens
 
 #include "RiverSplineComponent.h"
-#include "UObjectGlobals.h"
+#include "NamedIslandRivers.h"
 
-URiverSplineComponent::URiverSplineComponent()
+USplineMeshComponent* URiverSplineComponent::CreateRiver(UNamedRiver* River, int32 SplineIndex, AActor* Parent, const UNamedIslandRivers* Rivers)
 {
-	PointScale = 10.0f;
-}
+	// Store variables
+	UStaticMesh* riverMesh = Rivers->RiverMesh;
+	UMaterialInterface* riverMaterial = Rivers->RiverMaterial;
+	TMap<FName, UTexture*> textureMap = Rivers->RiverTextures;
+	float pointScale = Rivers->FlowScale;
+	float minWidth = Rivers->MinRiverWidth;
 
-USplineMeshComponent* URiverSplineComponent::CreateRiver(UNamedRiver* River, int32 SplineIndex, AActor* Parent, UMaterialInterface* RiverMaterial, TMap<FName, UTexture*> TextureMap)
-{
+	// Create unique mesh component name
 	FString objectName = GetName() + " Mesh ";
 	objectName.AppendInt(SplineIndex);
+	// Create the component and set starting parameters
 	USplineMeshComponent* riverSpline = NewObject<USplineMeshComponent>(Parent, FName(*objectName), RF_Transient);
 	riverSpline->SetMobility(EComponentMobility::Movable);
 	riverSpline->CreationMethod = EComponentCreationMethod::UserConstructionScript;
-
-	riverSpline->SetStaticMesh(RiverMesh);
+	riverSpline->SetStaticMesh(riverMesh);
 	riverSpline->bCastDynamicShadow = false;
 	riverSpline->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
-	CreateMaterial(riverSpline, RiverMaterial, TextureMap);
+	// Create the river material
+	CreateMaterial(riverSpline, riverMaterial, textureMap);
 	SetupMaterialParameters(riverSpline);
 
-	FVector scaleAtFirstPoint = GetScaleAtSplinePoint(SplineIndex) * PointScale * River->RiverFlow[SplineIndex];
+	// Set the river scale
+	FVector scaleAtFirstPoint = (minWidth * GetScaleAtSplinePoint(SplineIndex)) + (pointScale * River->RiverFlow[SplineIndex]);
 	riverSpline->SetStartScale(FVector2D(scaleAtFirstPoint.X, scaleAtFirstPoint.Y));
-	FVector scaleAtSecondPoint = GetScaleAtSplinePoint(SplineIndex + 1) * PointScale * River->RiverFlow[SplineIndex + 1];
+	FVector scaleAtSecondPoint = (minWidth * GetScaleAtSplinePoint(SplineIndex + 1)) + (pointScale * River->RiverFlow[SplineIndex + 1]);
 	riverSpline->SetEndScale(FVector2D(scaleAtSecondPoint.X, scaleAtSecondPoint.Y));
 
+	// Attach it to the parent island
 	riverSpline->AttachToComponent(this, FAttachmentTransformRules::KeepRelativeTransform);
 
+	// Make the river flow between tangents in the spline
 	FVector startLocation;
 	FVector startTangent;
 	FVector endLocation;
 	FVector endTangent;
 	GetLocalLocationAndTangentAtSplinePoint(SplineIndex, startLocation, startTangent);
 	GetLocalLocationAndTangentAtSplinePoint(SplineIndex + 1, endLocation, endTangent);
-
 	riverSpline->SetStartAndEnd(startLocation, startTangent, endLocation, endTangent);
 
+	// Finish setup
 	riverSpline->RegisterComponent();
 
 	return riverSpline;
@@ -64,12 +71,16 @@ void URiverSplineComponent::SetupMaterialParameters(USplineMeshComponent* Spline
 
 }
 
-TArray<USplineMeshComponent*> URiverSplineComponent::CreateRiverMeshes(UNamedRiver* River, AActor* Parent, UMaterialInterface* RiverMaterial, TMap<FName, UTexture*> TextureMap)
+TArray<USplineMeshComponent*> URiverSplineComponent::CreateRiverMeshes(UNamedRiver* River, AActor* Parent, const UNamedIslandRivers* Rivers)
 {
 	TArray<USplineMeshComponent*> meshes;
+	if (River == NULL)
+	{
+		return meshes;
+	}
 	for (int32 i = 0; i < GetNumberOfSplinePoints() - 1; i++)
 	{
-		meshes.Add(CreateRiver(River, i, Parent, RiverMaterial, TextureMap));
+		meshes.Add(CreateRiver(River, i, Parent, Rivers));
 		CreateTangentWaterfalls();
 	}
 	UE_LOG(LogWorldGen, Log, TEXT("Created %d river meshes for %s."), meshes.Num(), *River->RiverName);
