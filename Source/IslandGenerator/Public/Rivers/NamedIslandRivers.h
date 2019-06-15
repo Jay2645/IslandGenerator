@@ -40,9 +40,14 @@ public:
 	float RiverErosionFactor;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	TSubclassOf<URiverSplineComponent> RiverSplineMeshType;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Materials")
 	UMaterialInterface* RiverMaterial;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
-	TMap<FName, UTexture*> RiverTextures;
+	UParticleSystem* WaterfallParticles;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)
+	float MinWaterfallHeight;
 
 	// How much width gets added for each additional unit of river "flow."
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite)

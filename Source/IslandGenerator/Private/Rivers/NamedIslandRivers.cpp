@@ -7,7 +7,10 @@ UNamedIslandRivers::UNamedIslandRivers()
 {
 	RiverErosionFactor = 0.1f;
 	FlowScale = 10.0f;
+	MinWaterfallHeight = 250.0f;
 	MinRiverWidth = 30.0f;
+
+	RiverSplineMeshType = URiverSplineComponent::StaticClass();
 }
 
 void UNamedIslandRivers::AssignSideFlow_Implementation(TArray<int32>& s_flow, TArray<URiver*>& Rivers, UTriangleDualMesh* Mesh, const TArray<FSideIndex>& t_downslope_s, const TArray<FTriangleIndex>& river_t, FRandomStream& RiverRNG) const

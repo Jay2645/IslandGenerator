@@ -38,14 +38,14 @@ If you only want to access everything through Blueprint, you can just clone this
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
 				<OTHER DEPENDENCIES GO HERE>
-				"PolygonalMapGenerator"
+				"IslandGenerator"
 			]
 		}
 	],
 	"Plugins": [
 		<OTHER PLUGINS GO HERE>
 		{
-			"Name": "PolygonalMapGenerator",
+			"Name": "IslandGenerator",
 			"Enabled": true
 		}
 	]

@@ -18,13 +18,17 @@ class ISLANDGENERATOR_API URiverSplineComponent : public USplineComponent
 {
 	GENERATED_BODY()
 
-private:
-	USplineMeshComponent* CreateRiver(class UNamedRiver* River, int32 SplineIndex, AActor* Parent, const class UNamedIslandRivers* Rivers);
-	void CreateTangentWaterfalls();
+protected:
+	UPROPERTY()
+	TArray<UParticleSystemComponent*> Waterfalls;
+	UPROPERTY()
+	UMaterialInstanceDynamic* RiverDynamicMaterial;
 
-	UMaterialInstanceDynamic* CreateMaterial(USplineMeshComponent* SplineMesh, UMaterialInterface* RiverMaterial, TMap<FName, UTexture*> TextureMap);
-	void SetupMaterialParameters(USplineMeshComponent* SplineMesh);
+protected:
+	virtual USplineMeshComponent* CreateRiver(class UNamedRiver* River, int32 SplineIndex, AActor* Parent, const class UNamedIslandRivers* Rivers);
+	void CreateTangentWaterfalls(AActor* Parent, int32 SplineIndex, const class UNamedIslandRivers* Rivers);
 
+	UMaterialInstanceDynamic* CreateMaterial(USplineMeshComponent* SplineMesh, UMaterialInterface* RiverMaterial);
 public:
 	TArray<USplineMeshComponent*> CreateRiverMeshes(class UNamedRiver* River, AActor* Parent, const class UNamedIslandRivers* Rivers);
 };

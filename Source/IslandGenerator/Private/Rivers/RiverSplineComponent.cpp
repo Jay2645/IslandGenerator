@@ -2,13 +2,14 @@
 
 #include "RiverSplineComponent.h"
 #include "NamedIslandRivers.h"
+#include "Particles/ParticleSystemComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 USplineMeshComponent* URiverSplineComponent::CreateRiver(UNamedRiver* River, int32 SplineIndex, AActor* Parent, const UNamedIslandRivers* Rivers)
 {
 	// Store variables
 	UStaticMesh* riverMesh = Rivers->RiverMesh;
 	UMaterialInterface* riverMaterial = Rivers->RiverMaterial;
-	TMap<FName, UTexture*> textureMap = Rivers->RiverTextures;
 	float pointScale = Rivers->FlowScale;
 	float minWidth = Rivers->MinRiverWidth;
 
@@ -22,15 +23,16 @@ USplineMeshComponent* URiverSplineComponent::CreateRiver(UNamedRiver* River, int
 	riverSpline->SetStaticMesh(riverMesh);
 	riverSpline->bCastDynamicShadow = false;
 	riverSpline->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
+	
 	// Create the river material
-	CreateMaterial(riverSpline, riverMaterial, textureMap);
-	SetupMaterialParameters(riverSpline);
+	RiverDynamicMaterial = CreateMaterial(riverSpline, riverMaterial);
 
 	// Set the river scale
-	FVector scaleAtFirstPoint = (minWidth * GetScaleAtSplinePoint(SplineIndex)) + (pointScale * River->RiverFlow[SplineIndex]);
+	FVector rawFirstScale = GetScaleAtSplinePoint(SplineIndex);
+	FVector rawSecondScale = GetScaleAtSplinePoint(SplineIndex + 1);
+	FVector scaleAtFirstPoint = (minWidth * rawFirstScale) + (pointScale * River->RiverFlow[SplineIndex]);
 	riverSpline->SetStartScale(FVector2D(scaleAtFirstPoint.X, scaleAtFirstPoint.Y));
-	FVector scaleAtSecondPoint = (minWidth * GetScaleAtSplinePoint(SplineIndex + 1)) + (pointScale * River->RiverFlow[SplineIndex + 1]);
+	FVector scaleAtSecondPoint = (minWidth * rawSecondScale) + (pointScale * River->RiverFlow[SplineIndex + 1]);
 	riverSpline->SetEndScale(FVector2D(scaleAtSecondPoint.X, scaleAtSecondPoint.Y));
 
 	// Attach it to the parent island
@@ -51,24 +53,25 @@ USplineMeshComponent* URiverSplineComponent::CreateRiver(UNamedRiver* River, int
 	return riverSpline;
 }
 
-void URiverSplineComponent::CreateTangentWaterfalls()
+void URiverSplineComponent::CreateTangentWaterfalls(AActor* Parent, int32 SplineIndex, const UNamedIslandRivers* Rivers)
 {
+	if (Rivers == NULL || Rivers->WaterfallParticles == NULL)
+	{
+		return;
+	}
 
+	FVector splineTangent = GetTangentAtSplinePoint(SplineIndex, ESplineCoordinateSpace::Local);
+	if (splineTangent.Z <= (-1.0f * Rivers->MinWaterfallHeight))
+	{
+		UParticleSystemComponent* waterfall = UGameplayStatics::SpawnEmitterAttached(Rivers->WaterfallParticles, this, NAME_None, GetLocationAtSplinePoint(SplineIndex, ESplineCoordinateSpace::Local), GetRotationAtSplinePoint(SplineIndex, ESplineCoordinateSpace::Local), EAttachLocation::KeepRelativeOffset);
+		Waterfalls.Add(waterfall);
+	}
 }
 
-UMaterialInstanceDynamic* URiverSplineComponent::CreateMaterial(USplineMeshComponent* SplineMesh, UMaterialInterface* RiverMaterial, TMap<FName, UTexture*> TextureMap)
+UMaterialInstanceDynamic* URiverSplineComponent::CreateMaterial(USplineMeshComponent* SplineMesh, UMaterialInterface* RiverMaterial)
 {
 	UMaterialInstanceDynamic* riverMat = SplineMesh->CreateDynamicMaterialInstance(0, RiverMaterial);
-	for (auto kvp : TextureMap)
-	{
-		riverMat->SetTextureParameterValue(kvp.Key, kvp.Value);
-	}
 	return riverMat;
-}
-
-void URiverSplineComponent::SetupMaterialParameters(USplineMeshComponent* SplineMesh)
-{
-
 }
 
 TArray<USplineMeshComponent*> URiverSplineComponent::CreateRiverMeshes(UNamedRiver* River, AActor* Parent, const UNamedIslandRivers* Rivers)
@@ -81,8 +84,8 @@ TArray<USplineMeshComponent*> URiverSplineComponent::CreateRiverMeshes(UNamedRiv
 	for (int32 i = 0; i < GetNumberOfSplinePoints() - 1; i++)
 	{
 		meshes.Add(CreateRiver(River, i, Parent, Rivers));
-		CreateTangentWaterfalls();
+		CreateTangentWaterfalls(Parent, i, Rivers);
 	}
-	UE_LOG(LogWorldGen, Log, TEXT("Created %d river meshes for %s."), meshes.Num(), *River->RiverName);
+	UE_LOG(LogWorldGen, Log, TEXT("Created %d river meshes for %s, with %d waterfalls."), meshes.Num(), *River->RiverName, Waterfalls.Num());
 	return meshes;
 }
